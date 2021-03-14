@@ -7,6 +7,8 @@ import * as lmdjs from '@aws-cdk/aws-lambda-nodejs';
 import * as agw from '@aws-cdk/aws-apigateway';
 
 export class CdkGuestbookApplicationStack extends cdk.Stack {
+  public readonly apiEndpoint: string;
+  
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
@@ -109,5 +111,7 @@ export class CdkGuestbookApplicationStack extends cdk.Stack {
 
     const jsPostsPostIdReplies = postsPostId.addResource('replies');
     jsPostsPostIdReplies.addMethod('POST', new agw.LambdaIntegration(postReplyJs));
+    
+    this.apiEndpoint = api.url;
   }
 }

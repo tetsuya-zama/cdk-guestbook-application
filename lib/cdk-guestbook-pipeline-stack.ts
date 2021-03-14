@@ -1,15 +1,20 @@
 import { CdkGuestbookApplicationStack } from './cdk-guestbook-application-stack';
 
-import { Construct, Stage, Stack, StackProps, StageProps } from '@aws-cdk/core';
-import { CdkPipeline, SimpleSynthAction } from '@aws-cdk/pipelines';
+import { Construct, Stage, Stack, StackProps, StageProps, CfnOutput } from '@aws-cdk/core';
+import { CdkPipeline, SimpleSynthAction, ShellScriptAction } from '@aws-cdk/pipelines';
 import * as codepipeline from '@aws-cdk/aws-codepipeline';
 import { GitHubSourceAction } from '@aws-cdk/aws-codepipeline-actions';
 
 
 class GuestBookApplication extends Stage {
+    public readonly apiEndPoint: CfnOutput;
+    public readonly stackName: CfnOutput;
+  
     constructor(scope: Construct, id: string, props?: StageProps) {
         super(scope, id, props);
-        new CdkGuestbookApplicationStack(this, `${id}-staging-guestbook`);
+        const stack = new CdkGuestbookApplicationStack(this, `${id}-staging-guestbook`);
+        this.apiEndPoint = new CfnOutput(stack, 'API_ENDPOINT', {value: stack.apiEndpoint});
+        this.stackName = new CfnOutput(stack, 'STACK_NAME', {value:stack.stackName});
     }
 }
 
@@ -54,9 +59,24 @@ export class CdkGuestbookPipelineStack extends Stack {
     });
     
     const testingStage = pipeline.addStage('Testing');
-    testingStage.addApplication(new GuestBookApplication(this,'e2e'));
-    testingStage.nextSequentialRunOrder(-2);
     testingStage.addApplication(new GuestBookApplication(this,'staging'));
+    testingStage.nextSequentialRunOrder(-2);
+    const e2eApplication = new GuestBookApplication(this,'e2e');
+    testingStage.addApplication(e2eApplication);
+    testingStage.addActions(new ShellScriptAction({
+      actionName: "cypress-testing",
+      commands: [
+        "npm install -g yarn aws-cli",
+        "yarn",
+        "npx cypress open --env API_BASE_URL=${API_BASE_URL}",
+        "aws cloudformation delete-stack --stack-name ${STACK_NAME}"
+      ],
+      additionalArtifacts: [sourceArtifact],
+      useOutputs: {
+        API_BASE_URL: pipeline.stackOutput(e2eApplication.apiEndPoint),
+        STACK_NAME: pipeline.stackOutput(e2eApplication.stackName)
+      }
+    }))
     
     const deployStage = pipeline.addApplicationStage(
       new GuestBookApplication(this, 'prod'), 
