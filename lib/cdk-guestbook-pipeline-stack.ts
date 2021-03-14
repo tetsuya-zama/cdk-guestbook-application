@@ -21,8 +21,8 @@ export class CdkGuestbookPipelineStack extends Stack {
     const sourceArtifact = new codepipeline.Artifact();
     const cloudAssemblyArtifact = new codepipeline.Artifact();
     
-    const GitHubToken = this.node.tryGetContext('GITHUB_TOKEN');
-    if(!GitHubToken) throw new Error('Context:GITHUB_TOKEN_NAME is required');
+    const gitHubToken = this.node.tryGetContext('GITHUB_TOKEN');
+    if(!gitHubToken) throw new Error('Context:GITHUB_TOKEN_NAME is required');
     
     const pipeline = new CdkPipeline(this, 'Pipeline', {
       pipelineName: 'GuestBookPipeline',
@@ -31,7 +31,7 @@ export class CdkGuestbookPipelineStack extends Stack {
       sourceAction: new GitHubSourceAction({
         actionName: 'GitHub',
         output: sourceArtifact,
-        oauthToken: GitHubToken,
+        oauthToken: gitHubToken,
         // Replace these with your actual GitHub project name
         owner: 'tetsuya-zama',
         repo: 'cdk-guestbook-application',
@@ -43,7 +43,11 @@ export class CdkGuestbookPipelineStack extends Stack {
         cloudAssemblyArtifact,
         environment: {
           privileged: true
-        }
+        },
+        environmentVariables: {
+          "GITHUB_TOKEN": {value: gitHubToken}
+        },
+        synthCommand: 'npx cdk synth -c GITHUB_TOKEN=$GITHUB_TOKEN'
       }),
       
       selfMutating: false
@@ -51,8 +55,12 @@ export class CdkGuestbookPipelineStack extends Stack {
     
     const testingStage = pipeline.addStage('Testing');
     testingStage.addApplication(new GuestBookApplication(this,'e2e'));
+    testingStage.nextSequentialRunOrder(-2);
     testingStage.addApplication(new GuestBookApplication(this,'staging'));
     
-    const deployStage = pipeline.addApplicationStage(new GuestBookApplication(this, 'prod'));
+    const deployStage = pipeline.addApplicationStage(
+      new GuestBookApplication(this, 'prod'), 
+      {manualApprovals: true}
+    );
   }
 }
