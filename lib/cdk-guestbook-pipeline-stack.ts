@@ -4,6 +4,7 @@ import { Construct, Stage, Stack, StackProps, StageProps, CfnOutput } from '@aws
 import { CdkPipeline, SimpleSynthAction, ShellScriptAction } from '@aws-cdk/pipelines';
 import * as codepipeline from '@aws-cdk/aws-codepipeline';
 import { GitHubSourceAction } from '@aws-cdk/aws-codepipeline-actions';
+import * as iam from '@aws-cdk/aws-iam';
 
 
 class GuestBookApplication extends Stage {
@@ -68,14 +69,23 @@ export class CdkGuestbookPipelineStack extends Stack {
       commands: [
         "npm install -g yarn aws-cli",
         "yarn",
-        "npx cypress open --env API_BASE_URL=${API_BASE_URL}",
+        "npx cypress run --env API_BASE_URL=${API_BASE_URL}",
         "aws cloudformation delete-stack --stack-name ${STACK_NAME}"
       ],
       additionalArtifacts: [sourceArtifact],
       useOutputs: {
         API_BASE_URL: pipeline.stackOutput(e2eApplication.apiEndPoint),
         STACK_NAME: pipeline.stackOutput(e2eApplication.stackName)
-      }
+      },
+      rolePolicyStatements: [
+        new iam.PolicyStatement({
+          actions: [
+            "cloudformation:DeleteStack",
+            "cloudformation:DescribeStacks"            
+          ],
+          resources: ['*'],
+        }),
+      ],
     }))
     
     const deployStage = pipeline.addApplicationStage(
