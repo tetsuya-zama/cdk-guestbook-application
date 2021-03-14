@@ -3,7 +3,6 @@ import { GuestBookService, PostNotFoundError } from './domain';
 import { PostRepositoryDynamoDBImpl } from './impl';
 import { isNewPostRequest, isNewReplyRequest, convertPostRequestToResponse } from './interface';
 
-import trend_app_protect from 'trend_app_protect';
 
 const GUEST_BOOK_TABLE_NAME = process.env['GUEST_BOOK_TABLE_NAME'];
 const FILE_BUCKET_NAME = process.env['FILE_BUCKET_NAME'];
@@ -33,7 +32,7 @@ function composeGuestBookService(){
 }
 
 // GET: /, GET: /posts
-export const getIndexHandler:APIGatewayProxyHandler = trend_app_protect.api.aws_lambda.protectHandler(async () => {
+export const getIndexHandler:APIGatewayProxyHandler = async () => {
     const service = composeGuestBookService();
     const result = await service.getPosts();
 
@@ -43,10 +42,10 @@ export const getIndexHandler:APIGatewayProxyHandler = trend_app_protect.api.aws_
             console.error(err);
             return createInternalServerErrorResult()
         })(result.value)
-})
+}
 
 // GET /posts/{postid}
-export const getPostHandler: APIGatewayProxyHandler = trend_app_protect.api.aws_lambda.protectHandler(async (event: APIGatewayProxyEvent) => {
+export const getPostHandler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent) => {
     const postId = event.pathParameters?.postid;
     if(!postId) return createBadRequestResult(); 
     
@@ -63,10 +62,10 @@ export const getPostHandler: APIGatewayProxyHandler = trend_app_protect.api.aws_
             console.error(err);
             return createInternalServerErrorResult();
         })(result.value)
-} );
+}
 
 // POST: / , POST: /posts
-export const postIndexHandler:APIGatewayProxyHandler = trend_app_protect.api.aws_lambda.protectHandler(async (event: APIGatewayProxyEvent) => {
+export const postIndexHandler:APIGatewayProxyHandler = async (event: APIGatewayProxyEvent) => {
     if(!FILE_BUCKET_NAME){
         throw new Error('Environment Variable "FILE_BUCKET_NAME" is required.');
     }
@@ -92,10 +91,10 @@ export const postIndexHandler:APIGatewayProxyHandler = trend_app_protect.api.aws
                 })(result.value)
         })(payload)
         : createBadRequestResult()
-});
+}
 
 // POST: /posts/{postid}/replies
-export const postReplyHandler: APIGatewayProxyHandler = trend_app_protect.api.aws_lambda.protectHandler(async (event: APIGatewayProxyEvent) => {
+export const postReplyHandler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent) => {
     const postId = event.pathParameters?.postid;
     const requestBody = event.body;
     
@@ -120,10 +119,10 @@ export const postReplyHandler: APIGatewayProxyHandler = trend_app_protect.api.aw
                 })(result.value)
         })(payload)
         : createBadRequestResult()
-});
+}
 
 // DELETE: /posts/{postid}
-export const deletePostHandler: APIGatewayProxyHandler = trend_app_protect.api.aws_lambda.protectHandler(async (event: APIGatewayProxyEvent) => {
+export const deletePostHandler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent) => {
     const postId = event.pathParameters?.postid;
     
     if(!postId) return createBadRequestResult();
@@ -139,4 +138,4 @@ export const deletePostHandler: APIGatewayProxyHandler = trend_app_protect.api.a
                 console.error(err)
                 return createInternalServerErrorResult()
             })(result.value);
-});
+}
