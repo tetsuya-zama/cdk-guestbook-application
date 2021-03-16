@@ -1,6 +1,6 @@
 import { CdkGuestbookApplicationStack } from './cdk-guestbook-application-stack';
 
-import { Construct, Stage, Stack, StackProps, StageProps, CfnOutput } from '@aws-cdk/core';
+import { Construct, Stage, Stack, StackProps, StageProps, CfnOutput, SecretValue } from '@aws-cdk/core';
 import { CdkPipeline, SimpleSynthAction, ShellScriptAction } from '@aws-cdk/pipelines';
 import * as codepipeline from '@aws-cdk/aws-codepipeline';
 import { GitHubSourceAction } from '@aws-cdk/aws-codepipeline-actions';
@@ -27,9 +27,6 @@ export class CdkGuestbookPipelineStack extends Stack {
     const sourceArtifact = new codepipeline.Artifact();
     const cloudAssemblyArtifact = new codepipeline.Artifact();
     
-    const gitHubToken = this.node.tryGetContext('GITHUB_TOKEN');
-    if(!gitHubToken) throw new Error('Context:GITHUB_TOKEN_NAME is required');
-    
     const pipeline = new CdkPipeline(this, 'Pipeline', {
       pipelineName: 'GuestBookPipeline',
       cloudAssemblyArtifact,
@@ -37,7 +34,7 @@ export class CdkGuestbookPipelineStack extends Stack {
       sourceAction: new GitHubSourceAction({
         actionName: 'GitHub',
         output: sourceArtifact,
-        oauthToken: gitHubToken,
+        oauthToken: SecretValue.secretsManager("github_token", {jsonField: "GITHUB_TOKEN"}),
         // Replace these with your actual GitHub project name
         owner: 'tetsuya-zama',
         repo: 'cdk-guestbook-application',
@@ -50,13 +47,8 @@ export class CdkGuestbookPipelineStack extends Stack {
         environment: {
           privileged: true
         },
-        environmentVariables: {
-          "GITHUB_TOKEN": {value: gitHubToken}
-        },
-        synthCommand: 'npx cdk synth -c GITHUB_TOKEN=$GITHUB_TOKEN'
+        synthCommand: 'npx cdk synth'
       }),
-      
-      selfMutating: false
     });
     
     const testingStage = pipeline.addStage('Testing');
