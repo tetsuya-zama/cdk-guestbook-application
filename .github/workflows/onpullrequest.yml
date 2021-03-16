@@ -1,0 +1,23 @@
+name: check_on_pullrequest
+
+on:
+  pull_request:
+    branches: [ master ]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v1
+      with:
+        node-version: 15.x
+    - name: setup
+      run: |
+        npm install yarn -g
+        yarn
+        
+    - name: test
+      run: |
+        yarn test
+        npx cdk synth -c GITHUB_TOKEN=${{secrets.GITHUB_TOKEN}}
