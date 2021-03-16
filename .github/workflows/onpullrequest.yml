@@ -20,4 +20,4 @@ jobs:
     - name: test
       run: |
         yarn test
-        npx cdk synth -c GITHUB_TOKEN=${{secrets.GITHUB_TOKEN}}
+        npx cdk synth
